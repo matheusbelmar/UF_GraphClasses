@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:15
+    restart: on-failure
+    container_name: ${DOCKER_CONTAINER}
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_SCHEMA}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+#      - ./schema:/docker-entrypoint-initdb.d  # auto-executa o .sql na inicialização
+      - ./data_cleaned:/app/data_cleaned
+      - ./sql:/app/sql
+      - ./schema:/app/schema 
+    ports:
+      - "${HOST_PORT}:5432"
+
+  python:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etl_python
+    depends_on:
+      - postgres
+    volumes:
+      - ./scripts:/app/scripts
+      - ./notebooks:/app/notebooks
+      - ./data:/app/data
+      - ./data_cleaned:/app/data_cleaned
+      - ./sql:/app/sql
+      - ./schema:/app/schema 
+    working_dir: /app
+    command: tail -f /dev/null 
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=university_dw
+
+volumes:
+  pg_data:
